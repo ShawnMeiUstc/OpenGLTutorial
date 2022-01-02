@@ -2,6 +2,50 @@
 #include <GLFW/glfw3.h>
 
 #include <iostream>
+#include <string>
+#include <fstream>
+#include <sstream>
+
+struct ShaderProgramSource
+{
+	std::string VertexSource;
+	std::string FragmentSource;
+};
+
+static ShaderProgramSource ParseShader(const std::string& filepath)
+{
+	std::ifstream stream(filepath);
+
+	enum class ShaderType
+	{
+		NONE = -1,
+		VERTEX,
+		FRNGMENT
+	};
+
+	std::string line;
+	ShaderType type = ShaderType::NONE;
+	std::stringstream ss[2];
+	while (getline(stream, line))
+	{
+		if (line.find("#shader") != std::string::npos)
+		{
+			if (line.find("vertex") != std::string::npos)
+			{
+				type = ShaderType::VERTEX;
+			}
+			else if (line.find("fragment") != std::string::npos)
+			{
+				type = ShaderType::FRNGMENT;
+			}
+		}
+		else
+		{
+			ss[static_cast<unsigned int>(type)] << line << "\n";
+		}
+	}
+	return { ss[0].str(), ss[1].str() };
+}
 
 static unsigned int CompileShader(unsigned int type, const std::string& source)
 {
@@ -20,7 +64,6 @@ static unsigned int CompileShader(unsigned int type, const std::string& source)
 		std::cout << "Fail to Compile " << (GL_VERTEX_SHADER == type ? "vertex " : "fragment ") << "shader: \n" 
 			<< log << std::endl;
 	}
-
 	return id;
 }
 static unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
@@ -95,28 +138,8 @@ int main(void)
 	// 每个顶点有size 2个GL_FLOAT
 	// stride：每个顶点的所有属性占的总字节数
 	glVertexAttribPointer(0, 2, GL_FLOAT, false, 8, nullptr);
-
-	const std::string vertexShader = R"glsl(
-		#version 330 core
-
-		layout(location = 0) in vec4 position;
-
-		void main(){
-			gl_Position = position;
-		}
-	)glsl";
-	
-	const std::string fragmentShader = R"glsl(
-		#version 330 core
-
-		layout(location = 0) out vec4 color;
-
-		void main(){
-			color = vec4(1.0, 0.0, 0.0, 1.0);
-		}
-	)glsl";
-
-	unsigned int shader = CreateShader(vertexShader, fragmentShader);
+	ShaderProgramSource source = ParseShader("res/shaders/Basic.shader");
+	unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource);
 	glUseProgram(shader);
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
@@ -132,6 +155,7 @@ int main(void)
 		glfwPollEvents();
 	}
 
+	glDeleteProgram(shader);
 	glfwTerminate();
 	return 0;
 }
