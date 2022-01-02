@@ -6,6 +6,31 @@
 #include <fstream>
 #include <sstream>
 
+#define ASSERT(x) if(!(x)) __debugbreak();
+
+#ifdef _DEBUG
+#define GLCall(x) GLClearError(); x; ASSERT(GLLogCall(#x, __FILE__, __LINE__))
+#else
+#define GLCall(x) x
+#endif
+
+static void GLClearError()
+{
+	while (glGetError() != GL_NO_ERROR);
+}
+
+static bool GLLogCall(const char* function, const char* file, int line)
+{
+	while (GLenum error = glGetError())
+	{
+		std::cout << "[OpenGL Error] (" << error << ") happens in FUNCTION: " 
+			<< function << "\nFILE: " << file << "\nLINE: "
+			<< line << std::endl;
+		return false;
+	}
+	return true;
+}
+
 struct ShaderProgramSource
 {
 	std::string VertexSource;
@@ -110,27 +135,38 @@ int main(void)
 
 	float position[] = {
 		-0.5f, -0.5,
-		 0.0f,  0.5f,
-		 0.5f, -0.5f
+		 0.5f, -0.5f,
+		 0.5f,  0.5f,
+		-0.5f,  0.5f
+	};
+
+	unsigned int indices[] = {
+		0,1,2,
+		2,3,0
 	};
 
 	// Generate a name for a new buffer.
 	// e.g. buffer = 2
 	// 只是产生一个id给buffer用，并没有产生真的buffer object
-	GLuint buffer;
-	glGenBuffers(1, &buffer);
+	unsigned int vbo;
+	glGenBuffers(1, &vbo);
 	// Make the new buffer active, creating it if necessary.
 	// Kind of like:
 	// if (opengl->buffers[buffer] == null)
 	//     opengl->buffers[buffer] = new Buffer()
 	// opengl->current_array_buffer = opengl->buffers[buffer]
 	// 真正产生buffer并且跟id绑定（并不知道大小）
-	glBindBuffer(GL_ARRAY_BUFFER, buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	// Upload a bunch of data into the active array buffer
 	// Kind of like:
 	// opengl->current_array_buffer->data = new byte[sizeof(points)]
 	// memcpy(opengl->current_array_buffer->data, points, sizeof(points))
 	glBufferData(GL_ARRAY_BUFFER, sizeof(position), position, GL_STATIC_DRAW);
+
+	unsigned int ibo;
+	glGenBuffers(1, &ibo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 	
 	// Enable or disable a generic vertex attribute array
 	glEnableVertexAttribArray(0);
@@ -147,7 +183,7 @@ int main(void)
 		/* Render here */
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		GLCall(glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr));
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);
 
