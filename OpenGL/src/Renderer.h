@@ -1,8 +1,8 @@
 #pragma once
-
 class VertexArray;
 class IndexBuffer;
 class Shader;
+
 class Renderer
 {
 public:

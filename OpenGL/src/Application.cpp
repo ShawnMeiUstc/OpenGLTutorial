@@ -1,113 +1,88 @@
 #include "GLPch.h"
-#include "Renderer.h"
-#include "VertexArray.h"
-#include "VertexBuffer.h"
-#include "IndexBuffer.h"
-#include "VertexBufferLayout.h"
-#include "Shader.h"
-#include "Texture.h"
+#include "tests/TestCLearColor.h"
+#include "tests/TestTexture2D.h"
+
+int width = 1080, height = 720;
 
 int main()
 {
 	GLFWwindow* window;
 
-	/* Initialize the library */
 	if (!glfwInit())
 		return -1;
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-	/* Create a windowed mode window and its OpenGL context */
-	window = glfwCreateWindow(640, 640, "Hello World", nullptr, nullptr);
+	window = glfwCreateWindow(width, height, "OpenGL Tutorial", nullptr, nullptr);
 	if (!window)
 	{
 		glfwTerminate();
 		return -1;
 	}
 
-	/* Make the window's context current */
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(2);
 
 	if (glewInit() != GLEW_OK) {
 		std::cerr << "glew init error" << std::endl;
 	}
-
-	int nrAttributes;
-	glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
-	std::cout << glGetString(GL_VERSION) << std::endl << nrAttributes << std::endl;
+#ifdef _DEBUG
+	std::cout << glGetString(GL_VERSION) << std::endl;
+#endif
 
 	{
-		float position[] = {
-		-0.5f, -0.5, 0.0f, 0.0f,
-		 0.5f, -0.5f, 1.0f, 0.0f,
-		 0.5f,  0.5f, 1.0f, 1.0f,
-		-0.5f,  0.5f, 0.0f, 1.0f
-		};
-
-		unsigned int indices[] = {
-			0,1,2,
-			2,3,0
-		};
-
-		GLCall(glEnable(GL_BLEND));
-		GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC1_ALPHA));
-
-		VertexArray vao;
-		VertexBuffer vbo(position, sizeof(position));
-		VertexBufferLayout layout;
-		layout.Push<float>(2);
-		layout.Push<float>(2);
-		vao.AddBuffer(vbo, layout);
-		IndexBuffer ibo(indices, sizeof(indices) / sizeof(indices[0]));
-
-		Shader shader("res/shaders/Basic.shader");
-		shader.Bind();
-		shader.SetUniform4f("u_Color", 0.8f, 0.5f, 0.2f, 1.0f);
-		shader.setUniform1i("u_Texture", 0);
-		Texture texture("res/textures/rectangle.png");
-		texture.Bind();
 		Renderer renderer;
 
-		float r = 0.0f;
-		float increment = 0.05f;
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGuiIO& io = ImGui::GetIO(); (void)io;
+		ImGui::StyleColorsDark();
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui_ImplOpenGL3_Init((char*)glGetString(GL_NUM_SHADING_LANGUAGE_VERSIONS));
 
-		vao.Unbind();
-		vbo.Unbind();
-		ibo.Unbind();
-		shader.Unbind();
-		texture.Unbind();
-		/* Loop until the user closes the window */
+		test::Test* currentTest = nullptr;
+		test::TestMenu* testMenu = new test::TestMenu(currentTest);
+		currentTest = testMenu;
+
+		testMenu->RegisterTest<test::TestClearColor>("Clear Color");
+		testMenu->RegisterTest<test::TestTexture2D>("2D Texture");
+
 		while (!glfwWindowShouldClose(window))
 		{
-			/* Render here */
+			GLCall(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
 			renderer.Clear();
-			shader.Bind();
-			shader.SetUniform4f("u_Color", r, 0.5f, 0.2f, 1.0f);
-			texture.Bind();
-			shader.setUniform1i("u_Texture", 0);
 
-			renderer.Draw(vao, ibo,shader);
-
-			if (r > 1.0f)
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
+			if (currentTest)
 			{
-				increment = -0.05f;
+				currentTest->OnUpdate(0.0f);
+				currentTest->OnRender();
+				ImGui::Begin("Test");
+				if (currentTest != testMenu && ImGui::Button("<--Back-->"))
+				{
+					delete currentTest;
+					currentTest = testMenu;
+				}
+				currentTest->OnImGuiRender();
+				ImGui::End();
 			}
-			else if (r < 0.0f)
-			{
-				increment = 0.05f;
-			}
-			r += increment;
 
-			/* Swap front and back buffers */
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 			glfwSwapBuffers(window);
-
-			/* Poll for and process events */
 			glfwPollEvents();
 		}
+		if (currentTest != testMenu)
+		{
+			delete testMenu;
+		}
+		delete currentTest;
 	}
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 	glfwTerminate();
 	return 0;
 }

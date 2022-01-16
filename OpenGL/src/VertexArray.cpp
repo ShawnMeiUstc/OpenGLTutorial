@@ -1,7 +1,4 @@
 #include "GLPch.h"
-#include "VertexArray.h"
-#include "VertexBuffer.h"
-#include "VertexBufferLayout.h"
 
 /*各个参数含义是：
 		0：			这个是该属性在顶点中的 index（即，它是第几个属性，从 0 开始）。本例中，每个顶点只有三维坐标这一个属性，

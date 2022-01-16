@@ -1,4 +1,5 @@
 #pragma once
+
 struct ShaderProgramSource
 {
 	std::string VertexSource;
@@ -17,6 +18,8 @@ public:
 	// Set Uniforms
 	void setUniform1i(const std::string& name, int value);
 	void SetUniform4f(const std::string& name, float v0, float v1, float v2, float v3);
+	void SetUniformMat4f(const std::string& name, glm::mat4& matrix);
+
 private:
 	std::string m_Filepath;
 	unsigned int m_RendererID;	
